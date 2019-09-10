@@ -1,3 +1,7 @@
+/**
+ * @typedef {import('./halfedge.js')} Halfedge
+ */
+
 class Edge {
 	/**
 	 * This class represents an edge in a {@link module:Core.Mesh Mesh}.
@@ -5,6 +9,7 @@ class Edge {
 	 * @property {module:Core.Halfedge} halfedge One of the halfedges associated with this edge.
 	 */
 	constructor() {
+		/** @type {Halfedge} */
 		this.halfedge = undefined;
 		this.index = -1; // an ID between 0 and |E| - 1, where |E| is the number of edges in a mesh
 	}

@@ -19,12 +19,19 @@ class Mesh {
 	 * {@link https://en.wikipedia.org/wiki/Homology_(mathematics)#Surfaces homology generators}.
 	 */
 	constructor() {
+		/** @type {Vertex[]} */
 		this.vertices = [];
+		/** @type {Edge[]} */
 		this.edges = [];
+		/** @type {Face[]} */
 		this.faces = [];
+		/** @type {Corner[]} */
 		this.corners = [];
+		/** @type {Halfedge[]} */
 		this.halfedges = [];
+		/** @type {Face[]} */
 		this.boundaries = [];
+		/** @type {Array.Halfedge[]} */
 		this.generators = [];
 	}
 
@@ -406,4 +413,8 @@ function indexElements(elementList) {
 	return index;
 }
 
-module.exports = [Mesh, indexElements]
+// module.exports = [Mesh, indexElements]
+module.exports = {
+	Mesh: Mesh,
+	indexElements: indexElements,
+}

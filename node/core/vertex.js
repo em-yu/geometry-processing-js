@@ -1,3 +1,7 @@
+/**
+ * @typedef {import('./halfedge.js')} Halfedge
+ */
+
 class Vertex {
 	/**
 	 * This class represents a vertex in a {@link module:Core.Mesh Mesh}.
@@ -5,6 +9,7 @@ class Vertex {
 	 * @property {module:Core.Halfedge} halfedge One of the outgoing halfedges associated with this vertex.
 	 */
 	constructor() {
+		/** @type {Halfedge} */
 		this.halfedge = undefined;
 		this.index = -1; // an ID between 0 and |V| - 1, where |V| is the number of vertices in a mesh
 	}

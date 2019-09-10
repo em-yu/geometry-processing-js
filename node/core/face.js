@@ -1,3 +1,10 @@
+/**
+ * @typedef {import('./vertex.js')} Vertex
+ * @typedef {import('./halfedge.js')} Halfedge
+ * @typedef {import('./edge.js')} Edge
+ * @typedef {import('./corner.js')} Corner
+ */
+
 class Face {
 	/**
 	 * This class represents a face in a {@link module:Core.Mesh Mesh}.
@@ -5,6 +12,7 @@ class Face {
 	 * @property {module:Core.Halfedge} halfedge One of the halfedges associated with this face.
 	 */
 	constructor() {
+		/** @type {Halfedge} */
 		this.halfedge = undefined;
 		this.index = -1; // an ID between 0 and |F| - 1 if this face is not a boundary loop
 		// or an ID between 0 and |B| - 1 if this face is a boundary loop, where |F| is the
@@ -25,7 +33,7 @@ class Face {
 	 * Iterates over the vertices of a boundary loop if this face is a boundary loop.
 	 * @method module:Core.Face#adjacentVertices
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Vertex}
+	 * @returns {Vertex[]} vertices
 	 * @example
 	 * let f = mesh.faces[0]; // or let b = mesh.boundaries[0]
 	 * for (let v of f.adjacentVertices()) {
@@ -41,7 +49,7 @@ class Face {
 	 * Iterates over the edges of a boundary loop if this face is a boundary loop.
 	 * @method module:Core.Face#adjacentEdges
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Edge}
+	 * @returns {Edge[]}
 	 * @example
 	 * let f = mesh.faces[0]; // or let b = mesh.boundaries[0]
 	 * for (let e of f.adjacentEdges()) {
@@ -56,7 +64,7 @@ class Face {
 	 * Convenience function to iterate over the faces neighboring this face.
 	 * @method module:Core.Face#adjacentFaces
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Face}
+	 * @returns {Face[]}
 	 * @example
 	 * let f = mesh.faces[0]; // or let b = mesh.boundaries[0]
 	 * for (let g of f.adjacentFaces()) {
@@ -72,7 +80,7 @@ class Face {
 	 * Iterates over the halfedges of a boundary loop if this face is a boundary loop.
 	 * @method module:Core.Face#adjacentHalfedges
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Halfedge}
+	 * @returns {Halfedge[]}
 	 * @example
 	 * let f = mesh.faces[0]; // or let b = mesh.boundaries[0]
 	 * for (let h of f.adjacentHalfedges()) {
@@ -88,7 +96,7 @@ class Face {
 	 * is a boundary loop.
 	 * @method module:Core.Face#adjacentCorners
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Corner}
+	 * @returns {Corner[]}
 	 * @example
 	 * let f = mesh.faces[0];
 	 * for (let c of f.adjacentCorners()) {

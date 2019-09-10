@@ -1,4 +1,11 @@
 /**
+ * @typedef {import('./vertex.js')} Vertex
+ * @typedef {import('./face.js')} Face
+ * @typedef {import('./edge.js')} Edge
+ * @typedef {import('./corner.js')} Corner
+ */
+
+/**
  * This module implements a halfedge mesh data structure and its associated geometry.
  * A halfedge mesh stores mesh elements such as vertices, edges and faces as well as
  * their connectivity information. The latter is particulary important in geometry
@@ -35,13 +42,21 @@ class Halfedge {
 	 * @property {boolean} onBoundary A flag that indicates whether this halfedge is on a boundary.
 	 */
 	constructor() {
+		/** @type {Vertex} */
 		this.vertex = undefined;
+		/** @type {Edge} */
 		this.edge = undefined;
+		/** @type {Face} */
 		this.face = undefined;
+		/** @type {Corner} */
 		this.corner = undefined;
+		/** @type {Halfedge} */
 		this.next = undefined;
+		/** @type {Halfedge} */
 		this.prev = undefined;
+		/** @type {Halfedge} */
 		this.twin = undefined;
+		/** @type {boolean} */
 		this.onBoundary = undefined;
 		this.index = -1; // an ID between 0 and |H| - 1, where |H| is the number of halfedges in a mesh
 	}

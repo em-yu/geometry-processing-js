@@ -6,6 +6,7 @@ let Triplet = LinearAlgebra.Triplet;
 let ComplexSparseMatrix = LinearAlgebra.ComplexSparseMatrix;
 let ComplexTriplet = LinearAlgebra.ComplexTriplet;
 
+
 class Geometry {
 	/**
 	 * This class represents the geometry of a {@link module:Core.Mesh Mesh}. This includes information such
@@ -20,6 +21,7 @@ class Geometry {
 	 */
 	constructor(mesh, positions, normalizePositions = true) {
 		this.mesh = mesh;
+		/** @type {Vector[]} */
 		this.positions = {};
 		for (let i = 0; i < positions.length; i++) {
 			let v = this.mesh.vertices[i];
@@ -579,4 +581,8 @@ function normalize(positions, vertices, rescale = true) {
 	}
 }
 
-module.exports = [Geometry, normalize]
+// module.exports = [Geometry, normalize]
+module.exports = {
+	Geometry: Geometry,
+	normalize: normalize,
+}
