@@ -5,6 +5,11 @@ let SparseMatrix = LinearAlgebra.SparseMatrix;
 let Triplet = LinearAlgebra.Triplet;
 let ComplexSparseMatrix = LinearAlgebra.ComplexSparseMatrix;
 let ComplexTriplet = LinearAlgebra.ComplexTriplet;
+let Vertex = require('./vertex.js');
+let Edge = require('./edge.js');
+let Face = require('./face.js');
+let Halfedge = require('./halfedge.js');
+let Corner = require('./corner.js');
 
 
 class Geometry {
@@ -19,10 +24,12 @@ class Geometry {
 	 * @property {module:Core.Mesh} mesh The mesh this class describes the geometry of.
 	 * @property {Object} positions A dictionary mapping each vertex to a normalized position.
 	 */
-	constructor(mesh, positions, normalizePositions = true) {
+	constructor(mesh, positions, maxIndices, normalizePositions = true) {
 		this.mesh = mesh;
 		/** @type {Vector[]} */
 		this.positions = {};
+		this.maxIndices = maxIndices;
+		this.indices = undefined;
 		for (let i = 0; i < positions.length; i++) {
 			let v = this.mesh.vertices[i];
 			let p = positions[i];
@@ -30,9 +37,220 @@ class Geometry {
 			this.positions[v] = p;
 		}
 
+		// Build indices list (for rendering)
+		let F = this.mesh.faces.length;
+		let indices = new Uint32Array(F * 3);
+		for (let f of mesh.faces) {
+			let i = 0;
+			for (let v of f.adjacentVertices()) {
+				indices[3 * f.index + i++] = v.index;
+			}
+		};
+		this.indices = indices;
+
 		if (normalizePositions) {
 			normalize(this.positions, mesh.vertices);
 		}
+	}
+
+	/**
+	 * Splits an edge and add new elements to mesh
+	 * @param {Edge} edge 
+	 */
+	split(edge) {
+		if (this.mesh.vertices.length >= this.maxPoints) {
+			console.error("Max number of vertices reached");
+			return null;
+		}
+
+		const onBoundary = edge.onBoundary();
+
+		const vA = edge.halfedge.vertex;
+		const vB = edge.halfedge.twin.vertex;
+
+		// Create new vertex in the middle of the edge
+		let vNew = new Vertex();
+		let vNewPos = this.positions[vA.index].plus(this.positions[vB.index]);
+		vNewPos.scaleBy(0.5);
+
+		// Add new vertex to geometry and mesh
+		const vi = this.mesh.vertices.length;
+		this.positions[vi] = vNewPos;
+		vNew.index = vi;
+		this.mesh.vertices.push(vNew);
+
+		// Create a new edge
+		let e0New = new Edge();
+		e0New.index = this.mesh.edges.length;
+		this.mesh.edges.push(e0New);
+
+		// Create halfedges
+		// he01 is halfedge of new edge
+		// he02 is halfedge of old edge
+		let he01 = new Halfedge();
+		he01.index = this.mesh.halfedges.length;
+		this.mesh.halfedges.push(he01);
+		let he02 = new Halfedge();
+		he02.index = this.mesh.halfedges.length;
+		this.mesh.halfedges.push(he02);
+
+		e0New.halfedge = he01;
+		he01.edge = e0New;
+		he02.edge = edge; // old edge
+
+		he01.twin = edge.halfedge.twin;
+		he02.twin = edge.halfedge;
+
+		he01.next = edge.halfedge.next;
+		edge.halfedge.next.prev = he01;
+		he02.next = edge.halfedge.twin.next;
+		edge.halfedge.twin.next.prev = he02;
+		
+		he01.vertex = vNew;
+		he02.vertex = vNew;
+		vNew.halfedge = he01;
+
+		// Create corners for the halfedges
+		let c1 = new Corner();
+		c1.index = this.mesh.corners.length;
+		this.mesh.corners.push(c1);
+		he01.corner = c1;
+		c1.halfedge = he01;
+		he01.onBoundary = false;
+		// he02 may be a boundary halfedge
+		if (!onBoundary) {
+			let c2 = new Corner();
+			c2.index = this.mesh.corners.length;
+			this.mesh.corners.push(c2);
+			he02.corner = c2;
+			c2.halfedge = he02;
+			he02.onBoundary = false;
+		}
+		else {
+			he02.face = this.mesh.boundaries[0];
+			he02.onBoundary = true;
+			// Relink boundary halfedge loop
+			he02.prev = edge.halfedge.twin;
+			edge.halfedge.twin.next = he02;
+		}
+
+		let newFaces = [];
+
+		let newHalfedges;
+		let originalHalfedges;
+		if (!onBoundary) {
+			newHalfedges = [he01, he02];
+			originalHalfedges = [edge.halfedge, edge.halfedge.twin];
+		}
+		else {
+			newHalfedges = [he01];
+			originalHalfedges = [edge.halfedge];
+		}
+		for (let i = 0; i < newHalfedges.length; i++) {
+			let he = originalHalfedges[i];
+			let nhe = newHalfedges[i];
+			// Create a new face
+			let fNew = new Face();
+			fNew.index = this.mesh.faces.length;
+			this.mesh.faces.push(fNew);
+			newFaces.push(fNew);
+
+			// Link face with new halfedges
+			fNew.halfedge = nhe;
+			nhe.face = fNew;
+
+			// Create a new edge
+			let eNew = new Edge();
+			eNew.index = this.mesh.edges.length;
+			this.mesh.edges.push(eNew);
+
+			// Create halfedges around new edge
+			let hea = new Halfedge();
+			hea.index = this.mesh.halfedges.length;
+			this.mesh.halfedges.push(hea);
+			let heb = new Halfedge();
+			heb.index = this.mesh.halfedges.length;
+			this.mesh.halfedges.push(heb);
+
+			eNew.halfedge = hea;
+			hea.edge = eNew;
+			heb.edge = eNew;
+
+			hea.twin = heb;
+			heb.twin = hea;
+
+			hea.face = fNew;
+			heb.face = he.face;
+
+			hea.vertex = he.prev.vertex;
+			heb.vertex = vNew;
+
+			hea.next = nhe;
+			nhe.prev = hea;
+			hea.prev = nhe.next;
+			nhe.next.next = hea;
+
+			heb.next = he.prev;
+			he.prev.prev = heb;
+			heb.prev = he;
+			he.next = heb;
+
+			// Set face for halfedge opposite new vertex
+			nhe.next.face = fNew;
+
+			// Create corners for the halfedges
+			let ca = new Corner();
+			ca.index = this.mesh.corners.length;
+			this.mesh.corners.push(ca);
+			hea.corner = ca;
+			ca.halfedge = hea;
+
+			let cb = new Corner();
+			cb.index = this.mesh.corners.length;
+			this.mesh.corners.push(cb);
+			heb.corner = cb;
+			cb.halfedge = heb;
+
+			hea.onBoundary = false;
+			heb.onBoundary = false;
+
+		}
+
+		edge.halfedge.twin = he02;
+		he01.twin.twin = he01;
+
+		// Update indices list
+		let newIndices = [...this.indices];
+		let oldFaces;
+		if (!onBoundary) {
+			oldFaces = [edge.halfedge.face, he01.twin.face];
+		}
+		else {
+			oldFaces = [edge.halfedge.face];
+		}
+
+		// Replace old faces indices
+		for (let oldFace of oldFaces) {
+			// Get face indices
+			let indices = [];
+			for (let v of oldFace.adjacentVertices()) {
+				indices.push(v.index);
+			}
+			newIndices.splice(3 * oldFace.index, 3, ...indices);
+		}
+		// Add new faces indices
+		for(let newFace of newFaces) {
+			// Get face indices
+			let indices = [];
+			for (let v of newFace.adjacentVertices()) {
+				indices.push(v.index);
+			}
+			newIndices.splice(3 * newFace.index, 0, ...indices);
+		}
+		this.indices = newIndices;
+
+		return vNew.index;
+
 	}
 
 	/**
