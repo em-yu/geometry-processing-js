@@ -1,7 +1,7 @@
 let LinearAlgebra = require('../../linear-algebra/linear-algebra.js');
 let Vector = LinearAlgebra.Vector;
 let DenseMatrix = LinearAlgebra.DenseMatrix;
-let indexElements = require('../../core/mesh.js')[1];
+let indexElements = require('../../core/mesh.js').indexElements;
 
 class HeatMethod {
 	/**

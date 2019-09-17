@@ -1,5 +1,8 @@
 /**
  * @typedef {import('./halfedge.js')} Halfedge
+ * @typedef {import('./face.js')} Face
+ * @typedef {import('./edge.js')} Edge
+ * @typedef {import('./corner.js')} Corner
  */
 
 class Vertex {
@@ -56,7 +59,7 @@ class Vertex {
 	 * Convenience function to iterate over the vertices neighboring this vertex.
 	 * @method module:Core.Vertex#adjacentVertices
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Vertex}
+	 * @returns {Vertex[]}
 	 * @example
 	 * let v = mesh.vertices[0];
 	 * for (let u of v.adjacentVertices()) {
@@ -71,7 +74,7 @@ class Vertex {
 	 * Convenience function to iterate over the edges adjacent to this vertex.
 	 * @method module:Core.Vertex#adjacentEdges
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Edge}
+	 * @returns {Edge[]}
 	 * @example
 	 * let v = mesh.vertices[0];
 	 * for (let e of v.adjacentEdges()) {
@@ -86,7 +89,7 @@ class Vertex {
 	 * Convenience function to iterate over the faces adjacent to this vertex.
 	 * @method module:Core.Vertex#adjacentFaces
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Face}
+	 * @returns {Face[]}
 	 * @example
 	 * let v = mesh.vertices[0];
 	 * for (let f of v.adjacentFaces()) {
@@ -101,7 +104,7 @@ class Vertex {
 	 * Convenience function to iterate over the halfedges adjacent to this vertex.
 	 * @method module:Core.Vertex#adjacentHalfedges
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Halfedge}
+	 * @returns {Halfedge[]}
 	 * @example
 	 * let v = mesh.vertices[0];
 	 * for (let h of v.adjacentHalfedges()) {
@@ -116,7 +119,7 @@ class Vertex {
 	 * Convenience function to iterate over the corners adjacent to this vertex.
 	 * @method module:Core.Vertex#adjacentCorners
 	 * @param {boolean} ccw A flag indicating whether iteration should be in CCW or CW order.
-	 * @returns {module:Core.Corner}
+	 * @returns {Corner[]}
 	 * @example
 	 * let v = mesh.vertices[0];
 	 * for (let c of v.adjacentCorners()) {
