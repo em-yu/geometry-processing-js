@@ -155,12 +155,11 @@ class Geometry {
 			// Create corners for the halfedges
 			let interiorHalfedges = [nhe, hea, heb];
 			for (let k = 0; k < interiorHalfedges.length; k++) {
-				let interiorHalfedges = [nhe, hea, heb];
-				let halfedge = interiorHalfedges[i];
+				let hek = interiorHalfedges[k];
 				let c = this.mesh.newCorner();
-				halfedge.corner = c;
-				c.halfedge = halfedge;
-				halfedge.onBoundary = false;
+				c.halfedge = hek;
+				hek.corner = c;
+				hek.onBoundary = false;
 			}
 
 		}
