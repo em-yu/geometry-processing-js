@@ -5,11 +5,6 @@ let SparseMatrix = LinearAlgebra.SparseMatrix;
 let Triplet = LinearAlgebra.Triplet;
 let ComplexSparseMatrix = LinearAlgebra.ComplexSparseMatrix;
 let ComplexTriplet = LinearAlgebra.ComplexTriplet;
-let Vertex = require('./vertex.js');
-let Edge = require('./edge.js');
-let Face = require('./face.js');
-let Halfedge = require('./halfedge.js');
-let Corner = require('./corner.js');
 
 
 class Geometry {

@@ -133,7 +133,11 @@ class HeatMethod {
 		// be shifted such that the smallest distance is zero
 		this.subtractMinimumDistance(phi);
 
-		return phi;
+		// return phi;
+		return {
+			distance: phi,
+			gradient: X
+		}
 	}
 }
 
