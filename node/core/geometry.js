@@ -6,6 +6,10 @@ let Triplet = LinearAlgebra.Triplet;
 let ComplexSparseMatrix = LinearAlgebra.ComplexSparseMatrix;
 let ComplexTriplet = LinearAlgebra.ComplexTriplet;
 
+/**
+ * @typedef {import('./edge.js')} Edge
+ */
+
 
 class Geometry {
 	/**
@@ -49,7 +53,100 @@ class Geometry {
 	}
 
 	/**
-	 * Splits an edge and add new elements to mesh
+	 * Check whether an edge can be flipped and whether the flip miminizes the max angle
+	 * @param {Edge} edge 
+	 */
+	isFlippable(edge) {
+		// Check boundary
+		if (edge.onBoundary())
+			return false;
+		let he = edge.halfedge;
+		let twin = edge.halfedge.twin;
+		let x2 = he.prev.vertex;
+		let x3 = twin.prev.vertex;
+
+		// Check angles
+		let alpha0a = this.angle(he.next.corner);
+		let alpha0b = this.angle(twin.prev.corner);
+		let alpha1a = this.angle(he.prev.corner);
+		let alpha1b = this.angle(twin.next.corner);
+		if (alpha0a + alpha0b >= Math.PI || alpha1a + alpha1b >= Math.PI)
+			return false;
+		
+		// Check dihedral angle
+		if (Math.abs(this.dihedralAngle(he)) > 0.3)
+			return false;
+
+		// Check that flip maximizes min angle
+		let alpha2 = this.angle(he.corner);
+		let alpha3 = this.angle(twin.corner);
+		let oldMaxAngle = Math.max(alpha0a, alpha0b, alpha1a, alpha1b, alpha2, alpha3);
+
+		// New angles in case of flip
+		let alpha0 = alpha0a + alpha0b;
+		let alpha1 = alpha1a + alpha1b;
+		let v23 = this.positions[x3.index].minus(this.positions[x2.index]).unit();
+		let alpha2a = v23.angle(this.vector(he.prev));
+		let alpha2b = v23.angle(this.vector(he.next).negated());
+		let alpha3a = v23.negated().angle(this.vector(twin.next).negated());
+		let alpha3b = v23.negated().angle(this.vector(twin.prev));
+		let newMaxAngle = Math.max(alpha0, alpha1, alpha2a, alpha2b, alpha3a, alpha3b);
+
+		return newMaxAngle < oldMaxAngle;
+	}
+
+	/**
+	 * Flips an edge and update mesh connectivity and indices list
+	 * @param {Edge} edge 
+	 */
+	flip(edge) {
+		let he = edge.halfedge;
+		let twin = edge.halfedge.twin;
+
+		let nhe = he.next;
+		let phe = he.prev;
+		let ntwin = twin.next;
+		let ptwin = twin.prev;
+
+		let fhe = he.face;
+		let ftwin = twin.face;
+
+		let x0 = he.vertex;
+		let x1 = twin.vertex;
+		let x2 = phe.vertex;
+		let x3 = ptwin.vertex;
+
+		// Connectivity updates
+		x0.halfedge = ntwin;
+		x1.halfedge = nhe;
+
+		ntwin.face = fhe;
+		nhe.face = ftwin;
+
+		fhe.halfedge = he;
+		ftwin.halfedge = twin;
+
+		he.vertex = x3;
+		twin.vertex = x2;
+
+		this.mesh.linkHalfedges(ntwin, he);
+		this.mesh.linkHalfedges(he, phe);
+		this.mesh.linkHalfedges(phe, ntwin);
+
+		this.mesh.linkHalfedges(nhe, twin);
+		this.mesh.linkHalfedges(twin, ptwin);
+		this.mesh.linkHalfedges(ptwin, nhe);
+
+		// Update indices list
+		let newIndices = [...this.indices];
+		newIndices.splice(3 * fhe.index, 3, ...[x0.index, x3.index, x2.index]);
+		newIndices.splice(3 * ftwin.index, 3, ...[x1.index, x2.index, x3.index]);
+		this.indices = newIndices;
+
+	}
+
+	/**
+	 * Splits an edge, add new elements to mesh, update mesh connectivity and update indices list
 	 * @param {Edge} edge 
 	 * @return {number} The index of the new vertex
 	 */
