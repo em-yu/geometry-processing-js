@@ -179,6 +179,15 @@ class Vector {
 			this.z * v.x - this.x * v.z,
 			this.x * v.y - this.y * v.x);
 	}
+
+	/**
+	 * Computes the angle (in radians) between this vector and v
+	 * @param {Vector} v 
+	 * @returns {number} The angle clamped between 0 and π.
+	 */
+	angle(v) {
+		return Math.acos(Math.max(-1.0, Math.min(1.0, this.dot(v))));
+	}
 }
 
 module.exports = Vector
