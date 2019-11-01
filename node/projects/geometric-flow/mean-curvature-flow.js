@@ -1,7 +1,7 @@
 let LinearAlgebra = require('../../linear-algebra/linear-algebra.js');
 let DenseMatrix = LinearAlgebra.DenseMatrix;
-let indexElements = require('../../core/mesh.js')[1];
-let normalize = require('../../core/geometry.js')[1];
+let indexElements = require('../../core/mesh.js').indexElements;
+let normalize = require('../../core/geometry.js').normalize;
 
 class MeanCurvatureFlow {
 	/**
