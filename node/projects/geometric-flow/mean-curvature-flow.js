@@ -65,6 +65,9 @@ class MeanCurvatureFlow {
 			let i = this.vertexIndex[v];
 			let p = this.geometry.positions[v];
 
+			if (v.onBoundary())
+				continue;
+
 			p.x = fh.get(i, 0);
 			p.y = fh.get(i, 1);
 			p.z = fh.get(i, 2);

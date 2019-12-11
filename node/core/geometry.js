@@ -19,11 +19,12 @@ class Geometry {
 	 * @constructor module:Core.Geometry
 	 * @param {module:Core.Mesh} mesh The mesh this class describes the geometry of.
 	 * @param {module:LinearAlgebra.Vector[]} positions An array containing the position of each vertex in a mesh.
-	 * @param {boolean} normalizePositions flag to indicate whether positions should be normalized. Default value is true.
+	 * @param {boolean} normalizePositions flag to indicate whether positions should be normalized. Default value is false.
+	 * @param {boolean} normalizeEdges flag to indicate whether positions should be updated st edges of the mesh have approximately unit length. Default value is true.
 	 * @property {module:Core.Mesh} mesh The mesh this class describes the geometry of.
 	 * @property {Object} positions A dictionary mapping each vertex to a normalized position.
 	 */
-	constructor(mesh, positions, maxIndices, normalizePositions = true) {
+	constructor(mesh, positions, maxIndices, normalizePositions = false, normalizeEdges = true) {
 		this.mesh = mesh;
 		/** @type {Vector[]} */
 		this.positions = {};
@@ -49,6 +50,26 @@ class Geometry {
 
 		if (normalizePositions) {
 			normalize(this.positions, mesh.vertices);
+		}
+
+		if (normalizeEdges) {
+			// Center mesh on origin
+			normalize(this.positions, mesh.vertices, false);
+
+			// Compute avg edge length
+			let edgeLength = 0;
+			let n = 0;
+			for (let e of mesh.edges) {
+				edgeLength += this.length(e);
+				n++;
+			}
+			edgeLength /= n;
+
+			// Rescale mesh to have ~ unit length edges
+			for (let v of mesh.vertices) {
+				let p = this.positions[v];
+				p.divideBy(edgeLength);
+			}
 		}
 	}
 
