@@ -6,6 +6,11 @@ let Triplet = LinearAlgebra.Triplet;
 let ComplexSparseMatrix = LinearAlgebra.ComplexSparseMatrix;
 let ComplexTriplet = LinearAlgebra.ComplexTriplet;
 
+/**
+ * @typedef {import('./edge.js')} Edge
+ */
+
+
 class Geometry {
 	/**
 	 * This class represents the geometry of a {@link module:Core.Mesh Mesh}. This includes information such
@@ -14,13 +19,17 @@ class Geometry {
 	 * @constructor module:Core.Geometry
 	 * @param {module:Core.Mesh} mesh The mesh this class describes the geometry of.
 	 * @param {module:LinearAlgebra.Vector[]} positions An array containing the position of each vertex in a mesh.
-	 * @param {boolean} normalizePositions flag to indicate whether positions should be normalized. Default value is true.
+	 * @param {boolean} normalizePositions flag to indicate whether positions should be normalized. Default value is false.
+	 * @param {boolean} normalizeEdges flag to indicate whether positions should be updated st edges of the mesh have approximately unit length. Default value is true.
 	 * @property {module:Core.Mesh} mesh The mesh this class describes the geometry of.
 	 * @property {Object} positions A dictionary mapping each vertex to a normalized position.
 	 */
-	constructor(mesh, positions, normalizePositions = true) {
+	constructor(mesh, positions, maxIndices, normalizePositions = false, normalizeEdges = true) {
 		this.mesh = mesh;
+		/** @type {Vector[]} */
 		this.positions = {};
+		this.maxIndices = maxIndices;
+		this.indices = undefined;
 		for (let i = 0; i < positions.length; i++) {
 			let v = this.mesh.vertices[i];
 			let p = positions[i];
@@ -28,9 +37,289 @@ class Geometry {
 			this.positions[v] = p;
 		}
 
+		// Build indices list (for rendering)
+		let F = this.mesh.faces.length;
+		let indices = new Uint32Array(F * 3);
+		for (let f of mesh.faces) {
+			let i = 0;
+			for (let v of f.adjacentVertices()) {
+				indices[3 * f.index + i++] = v.index;
+			}
+		};
+		this.indices = indices;
+
 		if (normalizePositions) {
 			normalize(this.positions, mesh.vertices);
 		}
+
+		if (normalizeEdges) {
+			// Center mesh on origin
+			normalize(this.positions, mesh.vertices, false);
+
+			// Compute avg edge length
+			let edgeLength = 0;
+			let n = 0;
+			for (let e of mesh.edges) {
+				edgeLength += this.length(e);
+				n++;
+			}
+			edgeLength /= n;
+
+			// Rescale mesh to have ~ unit length edges
+			for (let v of mesh.vertices) {
+				let p = this.positions[v];
+				p.divideBy(edgeLength);
+			}
+		}
+	}
+
+	/**
+	 * Check whether an edge can be flipped and whether the flip miminizes the max angle
+	 * @param {Edge} edge 
+	 */
+	isFlippable(edge) {
+		// Check boundary
+		if (edge.onBoundary())
+			return false;
+		let he = edge.halfedge;
+		let twin = edge.halfedge.twin;
+		let x2 = he.prev.vertex;
+		let x3 = twin.prev.vertex;
+
+		// Check angles
+		let alpha0a = this.angle(he.next.corner);
+		let alpha0b = this.angle(twin.prev.corner);
+		let alpha1a = this.angle(he.prev.corner);
+		let alpha1b = this.angle(twin.next.corner);
+		if (alpha0a + alpha0b >= Math.PI || alpha1a + alpha1b >= Math.PI)
+			return false;
+		
+		// Check dihedral angle
+		if (Math.abs(this.dihedralAngle(he)) > 0.3)
+			return false;
+
+		// Check that flip maximizes min angle
+		let alpha2 = this.angle(he.corner);
+		let alpha3 = this.angle(twin.corner);
+		let oldMaxAngle = Math.max(alpha0a, alpha0b, alpha1a, alpha1b, alpha2, alpha3);
+
+		// New angles in case of flip
+		let alpha0 = alpha0a + alpha0b;
+		let alpha1 = alpha1a + alpha1b;
+		let v23 = this.positions[x3.index].minus(this.positions[x2.index]).unit();
+		let alpha2a = v23.angle(this.vector(he.prev));
+		let alpha2b = v23.angle(this.vector(he.next).negated());
+		let alpha3a = v23.negated().angle(this.vector(twin.next).negated());
+		let alpha3b = v23.negated().angle(this.vector(twin.prev));
+		let newMaxAngle = Math.max(alpha0, alpha1, alpha2a, alpha2b, alpha3a, alpha3b);
+
+		return newMaxAngle < oldMaxAngle;
+	}
+
+	/**
+	 * Flips an edge and update mesh connectivity and indices list
+	 * @param {Edge} edge 
+	 */
+	flip(edge) {
+		let he = edge.halfedge;
+		let twin = edge.halfedge.twin;
+
+		let nhe = he.next;
+		let phe = he.prev;
+		let ntwin = twin.next;
+		let ptwin = twin.prev;
+
+		let fhe = he.face;
+		let ftwin = twin.face;
+
+		let x0 = he.vertex;
+		let x1 = twin.vertex;
+		let x2 = phe.vertex;
+		let x3 = ptwin.vertex;
+
+		// Connectivity updates
+		x0.halfedge = ntwin;
+		x1.halfedge = nhe;
+
+		ntwin.face = fhe;
+		nhe.face = ftwin;
+
+		fhe.halfedge = he;
+		ftwin.halfedge = twin;
+
+		he.vertex = x3;
+		twin.vertex = x2;
+
+		this.mesh.linkHalfedges(ntwin, he);
+		this.mesh.linkHalfedges(he, phe);
+		this.mesh.linkHalfedges(phe, ntwin);
+
+		this.mesh.linkHalfedges(nhe, twin);
+		this.mesh.linkHalfedges(twin, ptwin);
+		this.mesh.linkHalfedges(ptwin, nhe);
+
+		// Update indices list
+		let newIndices = [...this.indices];
+		newIndices.splice(3 * fhe.index, 3, ...[x0.index, x3.index, x2.index]);
+		newIndices.splice(3 * ftwin.index, 3, ...[x1.index, x2.index, x3.index]);
+		this.indices = newIndices;
+
+	}
+
+	/**
+	 * Splits an edge, add new elements to mesh, update mesh connectivity and update indices list
+	 * @param {Edge} edge 
+	 * @return {number} The index of the new vertex
+	 */
+	split(edge) {
+		if (this.mesh.vertices.length >= this.maxPoints - 1) {
+			console.error("Max number of vertices reached");
+			return null;
+		}
+
+		const onBoundary = edge.onBoundary();
+
+		// Halfedge and twin of the original edge
+		const ohe = edge.halfedge;
+		const otwin = edge.halfedge.twin;
+
+		// Create new vertex in the middle of the edge
+		let vNewPos = this.midpoint(edge);
+		let vNew = this.mesh.newVertex();
+		this.positions[vNew.index] = vNewPos;
+
+		// Create a new edge
+		let e0New = this.mesh.newEdge();
+
+		// Create halfedges
+		let he01 = this.mesh.newHalfedge();
+		let he02 = this.mesh.newHalfedge();
+
+		// he01 is halfedge of new edge
+		e0New.halfedge = he01;
+		he01.edge = e0New;
+
+		// he02 is halfedge of old edge
+		he02.edge = edge;
+		
+		// Associate new vertex with new halfedges
+		he01.vertex = vNew;
+		he02.vertex = vNew;
+		vNew.halfedge = he01;
+
+		// Create a new face for each new halfedge not on a boundary
+		let newFaces = [];
+		let newHalfedges;
+		let originalHalfedges;
+		if (!onBoundary) {
+			newHalfedges = [he01, he02];
+			originalHalfedges = [ohe, otwin];
+		}
+		else {
+			newHalfedges = [he01];
+			originalHalfedges = [ohe];
+
+			// he02 is on boundary
+			he02.face = this.mesh.boundaries[0];
+			he02.onBoundary = true;
+			// Relink boundary halfedge loop
+			this.mesh.linkHalfedges(he02, otwin.next);
+			this.mesh.linkHalfedges(otwin, he02);
+			
+		}
+		for (let i = 0; i < newHalfedges.length; i++) {
+			let he = originalHalfedges[i];
+			let nhe = newHalfedges[i];
+
+			// Create a new face
+			let nface = this.mesh.newFace();
+			newFaces.push(nface);
+
+			// Link new face with new halfedge
+			nface.halfedge = nhe;
+			nhe.face = nface;
+			// Link old face with old halfedge
+			he.face.halfedge = he;
+
+			// Set face for halfedge opposite new vertex
+			he.next.face = nface;
+
+			// Create a new edge
+			let ne = this.mesh.newEdge();
+
+			// Create halfedges around new edge
+			let hea = this.mesh.newHalfedge();
+			let heb = this.mesh.newHalfedge();
+			// Set edge
+			ne.halfedge = hea;
+			hea.edge = ne;
+			heb.edge = ne;
+			// Set twins
+			this.mesh.glueHalfedges(hea, heb);
+			// Set face
+			hea.face = nface;
+			heb.face = he.face;
+			// Set vertex
+			hea.vertex = he.prev.vertex;
+			heb.vertex = vNew;
+
+			// Link halfedges together
+			this.mesh.linkHalfedges(nhe, he.next);
+			this.mesh.linkHalfedges(hea, nhe);
+			this.mesh.linkHalfedges(nhe.next, hea);
+			this.mesh.linkHalfedges(heb, he.prev);
+			this.mesh.linkHalfedges(he, heb);
+
+			// Create corners for the halfedges
+			let interiorHalfedges = [nhe, hea, heb];
+			for (let k = 0; k < interiorHalfedges.length; k++) {
+				let hek = interiorHalfedges[k];
+				let c = this.mesh.newCorner();
+				c.halfedge = hek;
+				hek.corner = c;
+				hek.onBoundary = false;
+			}
+
+		}
+
+		// Glue old and new halfedges together
+		this.mesh.glueHalfedges(he01, otwin);
+		this.mesh.glueHalfedges(he02, ohe);
+		
+		// Update indices list
+		let newIndices = [...this.indices];
+		let oldFaces;
+		if (!onBoundary) {
+			oldFaces = [ohe.face, otwin.face];
+		}
+		else {
+			oldFaces = [ohe.face];
+		}
+
+		// Replace old faces indices
+		for (let oldFace of oldFaces) {
+			// Get face indices
+			let indices = [];
+			for (let v of oldFace.adjacentVertices()) {
+				indices.push(v.index);
+			}
+			// Replace
+			newIndices.splice(3 * oldFace.index, 3, ...indices);
+		}
+		// Add new faces indices
+		for(let newFace of newFaces) {
+			// Get face indices
+			let indices = [];
+			for (let v of newFace.adjacentVertices()) {
+				indices.push(v.index);
+			}
+			// Add
+			newIndices.splice(3 * newFace.index, 0, ...indices);
+		}
+		this.indices = newIndices;
+
+		return vNew.index;
+
 	}
 
 	/**
@@ -579,4 +868,8 @@ function normalize(positions, vertices, rescale = true) {
 	}
 }
 
-module.exports = [Geometry, normalize]
+// module.exports = [Geometry, normalize]
+module.exports = {
+	Geometry: Geometry,
+	normalize: normalize,
+}

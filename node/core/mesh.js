@@ -19,14 +19,108 @@ class Mesh {
 	 * {@link https://en.wikipedia.org/wiki/Homology_(mathematics)#Surfaces homology generators}.
 	 */
 	constructor() {
+		/** @type {Vertex[]} */
 		this.vertices = [];
+		/** @type {Edge[]} */
 		this.edges = [];
+		/** @type {Face[]} */
 		this.faces = [];
+		/** @type {Corner[]} */
 		this.corners = [];
+		/** @type {Halfedge[]} */
 		this.halfedges = [];
+		/** @type {Face[]} */
 		this.boundaries = [];
+		/** @type {Array.Halfedge[]} */
 		this.generators = [];
 	}
+
+	/**
+	 * Creates a vertex and adds it to the mesh
+	 * @method
+	 * @returns {Vertex}
+	 */
+	newVertex() {
+		let v = new Vertex();
+		const vi = this.vertices.length;
+		v.index = vi;
+		this.vertices.push(v);
+		return v;
+	}
+
+	/**
+	 * Creates an edge and adds it to the mesh
+	 * @method
+	 * @returns {Edge}
+	 */
+	newEdge() {
+		let e = new Edge();
+		const ei = this.edges.length;
+		e.index = ei;
+		this.edges.push(e);
+		return e;
+	}
+
+	/**
+	 * Creates a face and adds it to the mesh
+	 * @method
+	 * @returns {Face}
+	 */
+	newFace() {
+		let f = new Face();
+		const fi = this.faces.length;
+		f.index = fi;
+		this.faces.push(f);
+		return f;
+	}
+
+	/**
+	 * Creates a corner and adds it to the mesh
+	 * @method
+	 * @returns {Corner}
+	 */
+	newCorner() {
+		let c = new Corner();
+		const ci = this.corners.length;
+		c.index = ci;
+		this.corners.push(c);
+		return c;
+	}
+
+	/**
+	 * Creates a halfedge and adds it to the mesh
+	 * @method
+	 * @returns {Halfedge}
+	 */
+	newHalfedge() {
+		let h = new Halfedge();
+		const hi = this.halfedges.length;
+		h.index = hi;
+		this.halfedges.push(h);
+		return h;
+	}
+
+	/**
+	 * Links two halfedges as prev and next of each other
+	 * @method
+	 * @param {Halfedge} he1 the halfedge before he2
+	 * @param {Halfedge} he2 the halfedge after he1
+	 */
+	linkHalfedges(he1, he2) {
+		he1.next = he2;
+		he2.prev = he1;
+	}
+
+	/**
+	 * Glues two halfedges as twins of each other
+	 * @method
+	 * @param {Halfedge} he1 twin halfedge of he2
+	 * @param {Halfedge} he2 twin halfedge of he1
+	 */
+	glueHalfedges(he1, he2) {
+		he1.twin = he2;
+		he2.twin = he1;
+	} 
 
 	/**
 	 * Computes the euler characteristic of this mesh.
@@ -406,4 +500,8 @@ function indexElements(elementList) {
 	return index;
 }
 
-module.exports = [Mesh, indexElements]
+// module.exports = [Mesh, indexElements]
+module.exports = {
+	Mesh: Mesh,
+	indexElements: indexElements,
+}

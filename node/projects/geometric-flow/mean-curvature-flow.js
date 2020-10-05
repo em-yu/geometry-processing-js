@@ -1,7 +1,7 @@
 let LinearAlgebra = require('../../linear-algebra/linear-algebra.js');
 let DenseMatrix = LinearAlgebra.DenseMatrix;
-let indexElements = require('../../core/mesh.js')[1];
-let normalize = require('../../core/geometry.js')[1];
+let indexElements = require('../../core/mesh.js').indexElements;
+let normalize = require('../../core/geometry.js').normalize;
 
 class MeanCurvatureFlow {
 	/**
@@ -64,6 +64,9 @@ class MeanCurvatureFlow {
 		for (let v of vertices) {
 			let i = this.vertexIndex[v];
 			let p = this.geometry.positions[v];
+
+			if (v.onBoundary())
+				continue;
 
 			p.x = fh.get(i, 0);
 			p.y = fh.get(i, 1);

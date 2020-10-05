@@ -1,3 +1,7 @@
+/**
+ * @typedef {import('./halfedge.js')} Halfedge
+ */
+
 class Corner {
 	/**
 	 * This class represents a corner in a {@link module:Core.Mesh Mesh}. It is a convenience
@@ -6,6 +10,7 @@ class Corner {
 	 * @property {module:Core.Halfedge} halfedge The halfedge opposite to this corner.
 	 */
 	constructor() {
+		/** @type {Halfedge} */
 		this.halfedge = undefined;
 		this.index = -1; // an ID between 0 and |C| - 1, where |C| is the number of corners in a mesh
 	}
